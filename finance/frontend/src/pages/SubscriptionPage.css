@@ -1,0 +1,94 @@
+/* General Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+    color: #333;
+  }
+  
+  h1 {
+    font-size: 2rem;
+    color: #333;
+    margin-bottom: 1rem;
+  }
+  
+  /* Subscription Page Layout */
+  .subscription-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Header */
+  .subscription-header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .subscription-header h1 {
+    font-size: 2.5rem;
+    color: #4CAF50;
+  }
+  
+  /* Main Content */
+  .subscription-content {
+    width: 100%;
+    padding: 20px;
+    background-color: #fafafa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .total-amount {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    font-weight: bold;
+  }
+  
+  ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .subscription-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .subscription-name {
+    font-weight: bold;
+  }
+  
+  .subscription-price {
+    color: #4CAF50;
+  }
+  
+  /* Footer */
+  .subscription-footer {
+    margin-top: 20px;
+  }
+  
+  .dashboard-btn {
+    padding: 10px 20px;
+    font-size: 1rem;
+    color: #fff;
+    background-color: #4CAF50;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .dashboard-btn:hover {
+    background-color: #45a049;
+  }
+  

@@ -1,23 +1,36 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function Dashboard() {
 
     const navigate = useNavigate();
 
+    const userDataString = localStorage.getItem('user_data');
+    let firstName = '';
+    if (userDataString) {
+        try {
+            const userData = JSON.parse(userDataString);
+            firstName = userData.firstName;
+        } catch (error) {
+            console.error('Error parsing user data from localStorage:', error);
+        }
+    } 
+
     const handleLogout = () => {
       // Clear user data
       //localStorage.removeItem('user_data');
-      localStorage.clear(); // optional: clear everything
+      localStorage.clear(); // clear everything
   
-      // Navigate to login screen
       navigate('/');
     };
+
+    const handleSubscription = () => {
+        navigate('/subscriptions');
+      };
 
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
-        <h1>Welcome to POOS FINANCE</h1>
+        <h1>Welcome, {firstName}!</h1>
         <button className="logout-btn" onClick={handleLogout}>Logout</button>
       </header>
 
@@ -83,7 +96,7 @@ function Dashboard() {
         <div className="actions">
           <button>Add Transaction</button>
           <button>Set Budget</button>
-          <button>View Reports</button>
+          <button onClick={handleSubscription}>View Subscriptions</button>
         </div>
       </section>
     </div>

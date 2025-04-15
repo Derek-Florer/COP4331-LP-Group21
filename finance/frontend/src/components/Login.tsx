@@ -1,9 +1,15 @@
 import React, { useState, FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function Login() {
     const [message, setMessage] = React.useState('');
     const [loginName, setLoginName] = React.useState('');
     const [loginPassword, setPassword] = React.useState('');
+
+    const navigate = useNavigate();
+    const handleSignup = () => {
+        navigate('/signup');
+      };
 
     async function doLogin(event: any): Promise<void> {
         event.preventDefault();
@@ -70,7 +76,7 @@ function Login() {
           <button type="submit">Login</button>
         </form>
         <p className="signup-text">
-          Don’t have an account? <span className="signup-link">Sign up</span>
+          Don’t have an account? <span className="signup-link" onClick={handleSignup}>Sign up</span>
         </p>
       </div>
     </div>
