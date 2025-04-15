@@ -10,8 +10,9 @@ function Signup() {
   async function doSignup(event: any): Promise<void> {
     event.preventDefault();
 
+    const randomNumber = Math.floor(100000000 + Math.random() * 900000000);
     const obj = {
-      userId: `${firstName}${lastName.charAt(0)}`,
+      userId: `${firstName}${lastName.charAt(0)}${randomNumber}`,
       firstName: firstName,
       lastName: lastName,
       login: email,

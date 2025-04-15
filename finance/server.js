@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const { ObjectId } = require('mongodb');
 
 const app = express();
 app.use(cors());
@@ -64,7 +65,7 @@ app.post('/api/login', async (req, res, next) => {
 
 app.post('/api/addSubscription', async (req, res, next) => {
     const { userId, subscriptionName, price} = req.body;
-    const newUser = { 
+    const newSubscription = { 
         UserId: userId,
         SubscriptionName: subscriptionName,
         Price: price
@@ -72,7 +73,21 @@ app.post('/api/addSubscription', async (req, res, next) => {
     var error = '';
     try {
         const db = client.db('finance');
-        const result = db.collection('Subscriptions').insertOne(newUser);
+        const result = db.collection('Subscriptions').insertOne(newSubscription);
+    }
+    catch (e) {
+        error = e.toString();
+    }
+    var ret = { error: error };
+    res.status(200).json(ret);
+});
+
+app.post('/api/removeSubscription', async (req, res, next) => {
+    const { id } = req.body;
+    var error = '';
+    try {
+        const db = client.db('finance');
+        const result = db.collection('Subscriptions').deleteOne({ _id: ObjectId.createFromHexString(id)});
     }
     catch (e) {
         error = e.toString();

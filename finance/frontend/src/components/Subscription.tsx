@@ -9,21 +9,19 @@ import { useNavigate } from 'react-router-dom';
   ];*/
 
 
-interface Subscription {
-  id: string; // or number, depending on your data type
+interface SubscriptionType {
+  _id: string; // or number, depending on your data type
+  UserId: string;
   SubscriptionName: string;
   Price: number;
 }
 
 function Subscription() {
+
   const [message, setMessage] = useState('');
   const [subscriptionName, setSubscriptionName] = useState('');
   const [price, setPrice] = useState('');
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-
-  useEffect(() => {
-    loadSubscriptions();
-  }, []);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionType[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const openModal = () => setIsModalOpen(true);
@@ -89,11 +87,13 @@ function Subscription() {
       });
 
       const res = JSON.parse(await response.text());
+      const refresh = await loadSubscriptions();
 
       if (res.error) {
         setMessage(res.error);
       } else {
         setMessage('Subscription Added!');
+        loadSubscriptions();
       }
     } catch (error: any) {
       alert(error.toString());
@@ -138,29 +138,65 @@ function Subscription() {
         }
   }
 
+  
+  const handleRemove = async (id: string) => {
+
+    let obj = { id: id };
+    let js = JSON.stringify(obj);
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/removeSubscription`,
+         {
+            method: 'POST', body: js, headers: {
+              'Content-Type':
+                  'application/json'
+            }
+        });
+
+        const refresh = await loadSubscriptions();
+  
+        const data = await response.json();
+        console.log("subscription removed");
+      } catch (error) {
+        console.error('Request error:', error);
+      }
+    };
+
   const navigate = useNavigate();
   const handleDashboard = () => {
     navigate('/dashboard');
   };
 
+  useEffect(() => {
+    loadSubscriptions();
+  }, []);
+
   return (
     <div className="subscription-page">
       <header className="subscription-header">
-        <h1>My Subscriptions</h1>
+        <h1>Subscriptions</h1>
       </header>
 
       <main className="subscription-content">
         <h1>Your monthly payment for subscriptions</h1>
         <div className="total-amount">
           <strong>Total Amount Spent: </strong>
+          <span>
+            ${subscriptions.reduce((acc, subscription) => acc + subscription.Price, 0).toFixed(2)}/month
+          </span>
         </div>
         <ul className="subscriptionList"> 
-          {subscriptions.map((subscription, index) => (
+          {subscriptions.length > 0 ? (
+            subscriptions.map((subscription, index) => (
                 <li key={index} className="subscription-item">
                   <span className="subscription-name">{subscription.SubscriptionName}</span>
                   <span className="subscription-price">${subscription.Price}</span>
+                  <button className="subscription-remove-btn" onClick={() => handleRemove(subscription._id)}>remove</button>
                 </li>
-              ))}
+              ))
+            ) : (
+                <li className="subscription-item">No subscriptions added yet.</li>
+              )}
         </ul>
       </main>
 

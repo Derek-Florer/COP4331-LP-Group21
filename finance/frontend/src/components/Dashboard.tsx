@@ -39,7 +39,7 @@ function Dashboard() {
         <div className="summary-grid">
           <div className="summary-card">
             <h3>Total Balance</h3>
-            <p>$8,450.00</p>
+            <p>$999,999,450.00</p>
           </div>
           <div className="summary-card">
             <h3>Monthly Income</h3>
