@@ -1,5 +1,5 @@
 import Subscription from '../components/Subscription'
-import "./SubscriptionPage.css"
+
 
 const SubscriptionPage = () =>
 {

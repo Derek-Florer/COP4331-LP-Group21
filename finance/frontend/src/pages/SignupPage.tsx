@@ -1,5 +1,5 @@
 import Signup from '../components/Signup'
-import "./SignupPage.css"
+
 
 const SignupPage = () =>
 {
