@@ -1,4 +1,3 @@
-```jsx
 import React from 'react';
 
 const TransactionList = ({ transactions }) => {
@@ -15,4 +14,3 @@ const TransactionList = ({ transactions }) => {
 };
 
 export default TransactionList;
-```

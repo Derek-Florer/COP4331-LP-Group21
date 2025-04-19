@@ -1,4 +1,3 @@
-```jsx
 import React, { useState } from 'react';
 import TransactionForm from '../components/TransactionForm';
 import TransactionList from '../components/TransactionList';
@@ -20,4 +19,3 @@ const Transactions = () => {
 };
 
 export default Transactions;
-```
