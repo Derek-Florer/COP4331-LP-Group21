@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 
 
 interface SubscriptionType {
-  _id: string; // or number, depending on your data type
+  _id: string;
   UserId: string;
   SubscriptionName: string;
   Price: number;
