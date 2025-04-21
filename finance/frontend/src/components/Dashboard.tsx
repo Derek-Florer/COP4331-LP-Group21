@@ -1,3 +1,4 @@
+import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Ellipsis } from "lucide-react"
@@ -10,6 +11,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu"
+
+interface DecodedToken {
+  userId: string,
+  firstName: string,
+}
 
 interface PaymentType {
   _id: string;
@@ -37,11 +43,11 @@ function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const userDataString = localStorage.getItem('user_data');
-    if (userDataString) {
+    const token = localStorage.getItem('token');
+    if (token) {
       try {
-        const userData = JSON.parse(userDataString);
-        setFirstName(userData.firstName);
+        const decodedToken = jwtDecode<DecodedToken>(token);
+        setFirstName(decodedToken.firstName);
       } catch (error) {
         console.error('Error parsing user data from localStorage:', error);
       }
@@ -76,16 +82,12 @@ function Dashboard() {
   };
   async function addPayment(event: any): Promise<void> {
     event.preventDefault();
-    const userDataString = localStorage.getItem('user_data');
-    let userId = '';
-    if (userDataString) {
+    const token = localStorage.getItem('token');
+    let userId = ""
+    if (token) {
       try {
-        const userData = JSON.parse(userDataString);
-        if (!userData.id) {
-          alert("no user data found");
-          return;
-        }
-        userId = userData.id;
+        const decodedToken = jwtDecode<DecodedToken>(token);
+        userId = decodedToken.userId;
       } catch (error) {
         console.error('Error parsing user data from localStorage:', error);
       }
@@ -143,16 +145,12 @@ function Dashboard() {
 
 
   const loadPayments = async () => {
-    const userDataString = localStorage.getItem('user_data');
-    let userId = '';
-    if (userDataString) {
+    const token = localStorage.getItem('token');
+    let userId = ""
+    if (token) {
       try {
-        const userData = JSON.parse(userDataString);
-        if (!userData.id) {
-          alert("no user data found");
-          return;
-        }
-        userId = userData.id;
+        const decodedToken = jwtDecode<DecodedToken>(token);
+        userId = decodedToken.userId;
       } catch (error) {
         console.error('Error parsing user data from localStorage:', error);
       }

@@ -38,7 +38,7 @@ export default function Login() {
       if (res.id <= 0) {
         setMessage('Invalid credentials');
       } else {
-        localStorage.setItem('user_data', JSON.stringify(res));
+        localStorage.setItem('token', res.token);
         window.location.href = '/dashboard';
       }
     } catch (err: any) {
@@ -46,7 +46,7 @@ export default function Login() {
     }
   };
 
-  const userDataString = localStorage.getItem('user_data');
+  const userDataString = localStorage.getItem('token');
   if (userDataString) {
     try {
       window.location.href = '/dashboard';
