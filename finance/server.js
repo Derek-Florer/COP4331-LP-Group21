@@ -24,8 +24,8 @@ app.listen(5000); //start Node + Express server on port 5000
 
 app.post('/api/signup', async (req, res, next) => {
     const { userId, firstName, lastName, login, password } = req.body;
-    const newUser = { 
-        UserId: userId, 
+    const newUser = {
+        UserId: userId,
         FirstName: firstName,
         LastName: lastName,
         Login: login,
@@ -63,9 +63,58 @@ app.post('/api/login', async (req, res, next) => {
     res.status(200).json(ret);
 });
 
+app.post('/api/addPayment', async (req, res, next) => {
+    const { userId, payment, category, method, amount } = req.body;
+    const newPayment = {
+        UserId: userId,
+        Payment: payment,
+        Category: category,
+        Method: method,
+        Amount: amount,
+    };
+    var error = '';
+    try {
+        const db = client.db('finance');
+        const result = db.collection('Payments').insertOne(newPayment);
+    }
+    catch (e) {
+        error = e.toString();
+    }
+    var ret = { error: error };
+    res.status(200).json(ret);
+});
+
+app.post('/api/loadPayments', async (req, res, next) => {
+    const { userId } = req.body;
+    var error = '';
+    try {
+        const db = client.db('finance');
+        const results = await db.collection('Payments').find({ UserId: userId }).toArray();
+        var ret = results
+        res.status(200).json(ret);
+    } catch (error) {
+        console.error('Error fetching subscriptions:', error);
+        res.status(500).json({ results: [], error: 'Failed to fetch subscriptions.' });
+    }
+});
+
+app.post('/api/removePayment', async (req, res, next) => {
+    const { id } = req.body;
+    var error = '';
+    try {
+        const db = client.db('finance');
+        const result = db.collection('Payments').deleteOne({ _id: ObjectId.createFromHexString(id) });
+    }
+    catch (e) {
+        error = e.toString();
+    }
+    var ret = { error: error };
+    res.status(200).json(ret);
+});
+
 app.post('/api/addSubscription', async (req, res, next) => {
-    const { userId, subscriptionName, price} = req.body;
-    const newSubscription = { 
+    const { userId, subscriptionName, price } = req.body;
+    const newSubscription = {
         UserId: userId,
         SubscriptionName: subscriptionName,
         Price: price
@@ -87,7 +136,7 @@ app.post('/api/removeSubscription', async (req, res, next) => {
     var error = '';
     try {
         const db = client.db('finance');
-        const result = db.collection('Subscriptions').deleteOne({ _id: ObjectId.createFromHexString(id)});
+        const result = db.collection('Subscriptions').deleteOne({ _id: ObjectId.createFromHexString(id) });
     }
     catch (e) {
         error = e.toString();
@@ -107,13 +156,13 @@ app.post('/api/loadSubscriptions', async (req, res, next) => {
         //  subscriptionName: subscription.subscriptionName,
         //  price: subscription.price
         //}));
-      
+
         var ret = results
         res.status(200).json(ret);
-      } catch (error) {
+    } catch (error) {
         console.error('Error fetching subscriptions:', error);
         res.status(500).json({ results: [], error: 'Failed to fetch subscriptions.' });
-      }
+    }
 });
 
 app.post('/api/searchcards', async (req, res, next) => {
