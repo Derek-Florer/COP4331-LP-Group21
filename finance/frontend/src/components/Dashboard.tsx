@@ -589,7 +589,7 @@ function Dashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paymentList.map((payment) => {
+              {[...paymentList].reverse().slice(0, 4).map((payment) => { //reverse list to show most recent transactions
                   const isEditing = editingId === payment._id;
                   return (
                     <TableRow key={payment._id} className="hover:bg-gray-200">

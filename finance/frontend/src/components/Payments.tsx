@@ -7,11 +7,25 @@ import { Input } from "@/components/ui/input";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboardSidebar";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Ellipsis, Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  Command,
+  CommandInput,
+} from "@/components/ui/command";
 
 interface PaymentType {
   _id: string;
@@ -35,42 +49,105 @@ export default function Payments() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editedPayment, setEditedPayment] = useState<Partial<PaymentType>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [open, setOpen] = useState(false);
+  const [payment, setPayment] = useState('');
+  const [category, setCategory] = useState('');
+  const [method, setMethod] = useState('');
+  const [amount, setAmount] = useState('');
+  const [message, setMessage] = useState('');
+  const paymentsPerPage = 10;
+
+  const loadPayments = async () => {
+    const startDate = new Date(selectedYear, selectedMonth - 1, 1);
+    const endDate = new Date(selectedYear, selectedMonth, 0);
+
+    const token = localStorage.getItem('token');
+    let userId = '';
+    if (token) {
+      try {
+        const decoded = jwtDecode<DecodedToken>(token);
+        userId = decoded.userId;
+      } catch (err) {
+        console.error("JWT Decode Error:", err);
+      }
+    }
+
+    try {
+      const res = await fetch("http://localhost:5000/api/loadPayments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+        }),
+      });
+      const data = await res.json();
+      setPayments(data);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+    }
+  };
 
   useEffect(() => {
-    const loadPayments = async () => {
-      const startDate = new Date(selectedYear, selectedMonth - 1, 1);
-      const endDate = new Date(selectedYear, selectedMonth, 0);
-
-      const token = localStorage.getItem('token');
-      let userId = '';
-      if (token) {
-        try {
-          const decoded = jwtDecode<DecodedToken>(token);
-          userId = decoded.userId;
-        } catch (err) {
-          console.error("JWT Decode Error:", err);
-        }
-      }
-
-      try {
-        const res = await fetch("http://localhost:5000/api/loadPayments", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId,
-            startDate: startDate.toISOString(),
-            endDate: endDate.toISOString(),
-          }),
-        });
-        const data = await res.json();
-        setPayments(data);
-      } catch (error) {
-        console.error("Error fetching payments:", error);
-      }
-    };
-
     loadPayments();
   }, [selectedMonth, selectedYear]);
+
+  useEffect(() => {
+    setCurrentPage(1); // Reset to page 1 when filters change
+  }, [selectedMonth, selectedYear]);
+
+  const handleAddPayment = async (event: any) => {
+    event.preventDefault();
+    if (!payment || !category || !method || !amount) {
+      alert('Please fill out all fields.');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    let userId = '';
+    if (token) {
+      try {
+        const decoded = jwtDecode<DecodedToken>(token);
+        userId = decoded.userId;
+      } catch (error) {
+        console.error('Error parsing user data from localStorage:', error);
+      }
+    }
+
+    const obj = {
+      userId,
+      payment,
+      category,
+      method,
+      amount: parseFloat(amount),
+    };
+
+    try {
+      const response = await fetch('http://localhost:5000/api/addPayment', {
+        method: 'POST',
+        body: JSON.stringify(obj),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const res = await response.json();
+      if (res.error) {
+        setMessage(res.error);
+      } else {
+        setMessage('Payment added!');
+        setPayment('');
+        setCategory('');
+        setMethod('');
+        setAmount('');
+        setOpen(false);
+        loadPayments();
+      }
+    } catch (error: any) {
+      alert(error.toString());
+    }
+  };
 
   const handleSave = async (id: string) => {
     try {
@@ -103,6 +180,15 @@ export default function Payments() {
     }
   };
 
+  const filteredPayments = payments.filter((p) =>
+    p.Payment.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const indexOfLastPayment = currentPage * paymentsPerPage;
+  const indexOfFirstPayment = indexOfLastPayment - paymentsPerPage;
+  const currentPayments = filteredPayments.slice(indexOfFirstPayment, indexOfLastPayment);
+  const totalPages = Math.ceil(filteredPayments.length / paymentsPerPage);
+
   const monthName = new Date(selectedYear, selectedMonth - 1).toLocaleString("default", {
     month: "long",
   });
@@ -126,6 +212,46 @@ export default function Payments() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
+
+                {/* Add Button */}
+                <div className="flex justify-end mb-4">
+                  <Button variant="outline" onClick={() => setOpen(true)}>Add Payment</Button>
+                </div>
+
+                {/* Add Payment Dialog */}
+                <Dialog open={open} onOpenChange={setOpen}>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Add a payment.</DialogTitle>
+                      <DialogDescription>Fill out the form to add a payment.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="payment" className="text-right">Payment</Label>
+                        <Input value={payment} onChange={(e) => setPayment(e.target.value)} className="col-span-3" />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="category" className="text-right">Category</Label>
+                        <Input value={category} onChange={(e) => setCategory(e.target.value)} className="col-span-3" />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="method" className="text-right">Method</Label>
+                        <Input value={method} onChange={(e) => setMethod(e.target.value)} className="col-span-3" />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="amount" className="text-right">Amount</Label>
+                        <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="col-span-3" />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button type="submit" onClick={handleAddPayment}>Add</Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Filter & Search */}
                 <div className="flex gap-4 mb-6">
                   <Select value={selectedMonth.toString()} onValueChange={(val) => setSelectedMonth(Number(val))}>
                     <SelectTrigger className="w-[160px]">
@@ -151,6 +277,18 @@ export default function Payments() {
                   />
                 </div>
 
+                {/* Search bar */}
+                <Command className="mb-6 rounded-lg border shadow-md">
+                  <CommandInput
+                    placeholder="Search payments by name..."
+                    onValueChange={(value) => {
+                      setSearchTerm(value);
+                      setCurrentPage(1);
+                    }}
+                  />
+                </Command>
+
+                {/* Payments Table */}
                 <div className="overflow-x-auto mt-4">
                   <table className="w-full text-sm text-left border-collapse">
                     <thead>
@@ -159,37 +297,19 @@ export default function Payments() {
                         <th className="px-3 py-2 font-semibold">Category</th>
                         <th className="px-3 py-2 font-semibold">Method</th>
                         <th className="px-3 py-2 font-semibold">Date</th>
-                        <th className="px-1 py-2 font-semibold text-right">Amount</th>
+                        <th className="px-1 py-2 font-semibold">Amount</th>
                         <th className="px-3 py-2 font-semibold text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {payments.length > 0 ? (
-                        payments.map((p) => {
+                      {currentPayments.length > 0 ? (
+                        currentPayments.map((p) => {
                           const isEditing = editingId === p._id;
                           return (
                             <tr key={p._id} className="border-b">
-                              <td className="px-3 py-2">
-                                {isEditing ? (
-                                  <Input value={editedPayment.Payment || ""} onChange={(e) => setEditedPayment({ ...editedPayment, Payment: e.target.value })} />
-                                ) : (
-                                  p.Payment
-                                )}
-                              </td>
-                              <td className="px-3 py-2">
-                                {isEditing ? (
-                                  <Input value={editedPayment.Category || ""} onChange={(e) => setEditedPayment({ ...editedPayment, Category: e.target.value })} />
-                                ) : (
-                                  p.Category
-                                )}
-                              </td>
-                              <td className="px-3 py-2">
-                                {isEditing ? (
-                                  <Input value={editedPayment.Method || ""} onChange={(e) => setEditedPayment({ ...editedPayment, Method: e.target.value })} />
-                                ) : (
-                                  p.Method
-                                )}
-                              </td>
+                              <td className="px-3 py-2">{isEditing ? <Input value={editedPayment.Payment || ""} onChange={(e) => setEditedPayment({ ...editedPayment, Payment: e.target.value })} /> : p.Payment}</td>
+                              <td className="px-3 py-2">{isEditing ? <Input value={editedPayment.Category || ""} onChange={(e) => setEditedPayment({ ...editedPayment, Category: e.target.value })} /> : p.Category}</td>
+                              <td className="px-3 py-2">{isEditing ? <Input value={editedPayment.Method || ""} onChange={(e) => setEditedPayment({ ...editedPayment, Method: e.target.value })} /> : p.Method}</td>
                               <td className="px-3 py-2">
                                 {isEditing ? (
                                   <Popover>
@@ -216,7 +336,7 @@ export default function Payments() {
                                   format(new Date(p.CreatedAt), "M/d/yyyy")
                                 )}
                               </td>
-                              <td className="px-3 py-2 text-right">
+                              <td className="px-1 py-2">
                                 {isEditing ? (
                                   <Input type="number" value={editedPayment.Amount?.toString() || ""} onChange={(e) => setEditedPayment({ ...editedPayment, Amount: Number(e.target.value) })} />
                                 ) : (
@@ -257,12 +377,36 @@ export default function Payments() {
                       ) : (
                         <tr>
                           <td colSpan={6} className="px-3 py-4 text-muted-foreground text-center">
-                            No payments found for this month.
+                            No matching payments found.
                           </td>
                         </tr>
                       )}
                     </tbody>
                   </table>
+
+                  {totalPages > 1 && (
+                    <div className="mt-4 flex justify-center">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                              className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                            />
+                          </PaginationItem>
+                          <PaginationItem className="px-4 flex items-center">
+                            Page {currentPage} of {totalPages}
+                          </PaginationItem>
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                              className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
