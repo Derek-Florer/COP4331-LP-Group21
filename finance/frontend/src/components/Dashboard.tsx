@@ -48,14 +48,17 @@ function Dashboard() {
   //dialog
   const [open, setOpen] = useState(false);
   //date
-  const [startDate, setStartDate] = React.useState<Date>();
-  const [endDate, setEndDate] = React.useState<Date>();
+  const now = new Date();
+  const defaultStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  const defaultEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const [startDate, setStartDate] = React.useState<Date>(defaultStartDate);
+  const [endDate, setEndDate] = React.useState<Date>(defaultEndDate);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     loadPayments();
-  }, []);
+  }, [startDate, endDate]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -172,7 +175,11 @@ function Dashboard() {
         console.error('Error parsing user data from localStorage:', error);
       }
     }
-    let obj = { userId: userId };
+    let obj = {
+      userId: userId,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    };
     let js = JSON.stringify(obj);
     try {
       const response = await
@@ -239,7 +246,7 @@ function Dashboard() {
                 <CardTitle className="text-2xl">Monthly Report</CardTitle>
                 <CardDescription className="text-muted-foreground">
 
-                <span className="text-lg font-medium text-muted-foreground pr-4">From</span>
+                  <span className="text-lg font-medium text-muted-foreground pr-4">From</span>
 
                   {/* Start Date */}
                   <Popover>
@@ -259,7 +266,7 @@ function Dashboard() {
                       <Calendar
                         mode="single"
                         selected={startDate}
-                        onSelect={setStartDate}
+                        onSelect={(date) => {date && setStartDate(date)}}
                         initialFocus
                       />
                     </PopoverContent>
@@ -285,7 +292,7 @@ function Dashboard() {
                       <Calendar
                         mode="single"
                         selected={endDate}
-                        onSelect={setEndDate}
+                        onSelect={(date) => {date && setEndDate(date)}}
                         initialFocus
                       />
                     </PopoverContent>

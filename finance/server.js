@@ -5,6 +5,7 @@ import { ObjectId, MongoClient } from 'mongodb';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
+import { DateTime } from 'luxon';
 
 dotenv.config();
 
@@ -107,13 +108,17 @@ app.post('/api/login', async (req, res, next) => {
 
 app.post('/api/addPayment', async (req, res, next) => {
     const { userId, payment, category, method, amount } = req.body;
+
+    const estTime = DateTime.now().setZone('America/New_York');
+    const estDate = estTime.toJSDate();
+
     const newPayment = {
         UserId: userId,
         Payment: payment,
         Category: category,
         Method: method,
         Amount: amount,
-        CreatedAt: new Date().toISOString(),
+        CreatedAt: estDate,
     };
     var error = '';
     try {
@@ -127,17 +132,24 @@ app.post('/api/addPayment', async (req, res, next) => {
     res.status(200).json(ret);
 });
 
-app.post('/api/loadPayments', async (req, res, next) => {
-    const { userId } = req.body;
-    var error = '';
+app.post('/api/loadPayments', async (req, res) => {
+    const { userId, startDate, endDate } = req.body;
+    const estStart = DateTime.fromISO(startDate).setZone('America/New_York').startOf('day').toJSDate();
+    const estEnd = DateTime.fromISO(endDate).setZone('America/New_York').endOf('day').toJSDate();
     try {
         const db = client.db('finance');
-        const results = await db.collection('Payments').find({ UserId: userId }).toArray();
-        var ret = results
-        res.status(200).json(ret);
-    } catch (error) {
-        console.error('Error fetching subscriptions:', error);
-        res.status(500).json({ results: [], error: 'Failed to fetch subscriptions.' });
+        const payments = await db.collection('Payments').find({
+            UserId: userId,
+            CreatedAt: {
+                $gte: estStart,
+                $lte: estEnd,
+            }
+        }).toArray();
+
+        res.status(200).json(payments);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to load payments' });
     }
 });
 
