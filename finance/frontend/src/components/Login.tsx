@@ -28,18 +28,22 @@ export default function Login() {
 
   const doLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const obj = { login: loginName, password: loginPassword };
+    const js = JSON.stringify(obj);
+
     try {
       const response = await fetch('http://localhost:5000/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ login: loginName, password: loginPassword }),
+        body: js,
       });
       const res = await response.json();
-      if (res.id <= 0) {
-        setMessage('Invalid credentials');
-      } else {
+      if (response.ok) {
         localStorage.setItem('token', res.token);
         window.location.href = '/dashboard';
+      } else {
+        setMessage('Invalid credentials');
       }
     } catch (err: any) {
       setMessage("Server error. Try again.");

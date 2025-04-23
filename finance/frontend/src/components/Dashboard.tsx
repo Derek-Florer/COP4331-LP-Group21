@@ -1,16 +1,23 @@
+import * as React from "react";
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Ellipsis } from "lucide-react"
+import { Ellipsis, Calendar as CalendarIcon } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/dashboardSidebar"
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu"
+import { Label as RechartLabel, PolarGrid, PolarRadiusAxis, RadialBar, RadialBarChart, } from "recharts";
+import { ChartConfig, ChartContainer } from "@/components/ui/chart"
+import { cn } from "@/lib/utils"
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger, } from "@/components/ui/popover";
 
 interface DecodedToken {
   userId: string,
@@ -24,6 +31,7 @@ interface PaymentType {
   Category: string,
   Method: string,
   Amount: number,
+  CreatedAt: string,
 }
 
 function Dashboard() {
@@ -39,8 +47,15 @@ function Dashboard() {
   const [paymentList, setPaymentList] = useState<PaymentType[]>([]);
   //dialog
   const [open, setOpen] = useState(false);
+  //date
+  const [startDate, setStartDate] = React.useState<Date>();
+  const [endDate, setEndDate] = React.useState<Date>();
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    loadPayments();
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -77,8 +92,10 @@ function Dashboard() {
     }
     const success = addPayment(event)
     handleCloseDialog();
-    if (success != null)
-      console.log("Payment added")
+    if (success != null) {
+      console.log("Payment added");
+      loadPayments();
+    }
   };
   async function addPayment(event: any): Promise<void> {
     event.preventDefault();
@@ -175,9 +192,20 @@ function Dashboard() {
       alert(error.toString());
     }
   }
-  useEffect(() => {
-    loadPayments();
-  }, []);
+
+  //radial chart info.
+  const chartData = [
+    { browser: "safari", visitors: 200, fill: "var(--color-safari)" },
+  ]
+  const chartConfig = {
+    visitors: {
+      label: "Visitors",
+    },
+    safari: {
+      label: "Safari",
+      color: "hsl(var(--chart-2))",
+    },
+  } satisfies ChartConfig
 
   return (
     <div className="w-screen h-screen bg-muted font-sans text-foreground flex overflow-hidden">
@@ -210,11 +238,114 @@ function Dashboard() {
               <CardHeader>
                 <CardTitle className="text-2xl">Monthly Report</CardTitle>
                 <CardDescription className="text-muted-foreground">
-                  Start Month – End Month
+
+                <span className="text-lg font-medium text-muted-foreground pr-4">From</span>
+
+                  {/* Start Date */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[220px] justify-start text-left font-normal",
+                          !startDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {startDate ? format(startDate, "PPP") : <span>Start date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={setStartDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  <span className="text-lg font-medium text-muted-foreground px-4">to</span>
+
+                  {/* End Date */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[220px] justify-start text-left font-normal",
+                          !endDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {endDate ? format(endDate, "PPP") : <span>End date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <p className="text-foreground">Card Content</p>
+              <CardContent className="flex-1 pb-0">
+                <ChartContainer
+                  config={chartConfig}
+                  className="mx-auto max-h-[220px] w-full flex items-center justify-center"
+                >
+                  <RadialBarChart
+                    data={chartData}
+                    startAngle={0}
+                    endAngle={250}
+                    innerRadius={70}
+                    outerRadius={95}
+                    cx={100} // Moves chart left
+                  >
+                    <PolarGrid
+                      gridType="circle"
+                      radialLines={false}
+                      stroke="none"
+                      polarRadius={[76, 64]}
+                    />
+                    <RadialBar dataKey="visitors" background cornerRadius={10} />
+                    <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
+                      <RechartLabel
+                        content={({ viewBox }) => {
+                          if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                            return (
+                              <text
+                                x={viewBox.cx}
+                                y={viewBox.cy}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                              >
+                                <tspan
+                                  x={viewBox.cx}
+                                  y={viewBox.cy}
+                                  className="fill-foreground text-2xl font-bold"
+                                >
+                                  {chartData[0].visitors.toLocaleString()}
+                                </tspan>
+                                <tspan
+                                  x={viewBox.cx}
+                                  y={(viewBox.cy || 0) + 20}
+                                  className="fill-muted-foreground text-sm"
+                                >
+                                  Visitors
+                                </tspan>
+                              </text>
+                            )
+                          }
+                        }}
+                      />
+                    </PolarRadiusAxis>
+                  </RadialBarChart>
+                </ChartContainer>
               </CardContent>
               <CardFooter>
                 <p className="text-sm text-muted-foreground">Card Footer</p>

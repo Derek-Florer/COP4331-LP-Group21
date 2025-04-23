@@ -83,28 +83,20 @@ app.post('/api/login', async (req, res, next) => {
     // outgoing: JWT token, error
     const { login, password } = req.body;
     const db = client.db('finance');
-    
-    // Fetch user by login (email or username)
     const user = await db.collection('Users').findOne({ Login: login });
-    
     if (!user) {
         return res.status(400).json({ error: 'Invalid credentials' });
     }
-
-    // Compare the provided password with the stored hashed password
     const isPasswordValid = await bcrypt.compare(password, user.Password);
-    
     if (!isPasswordValid) {
         return res.status(400).json({ error: 'Invalid credentials' });
     }
-
     // Generate JWT token if the login is successful
     const token = jwt.sign(
         { userId: user.UserId, firstName: user.FirstName, lastName: user.LastName },
         jwtSecret,
         { expiresIn: '1h' } // Set the expiration time (e.g., 1 hour)
     );
-
     // Respond with the token
     res.status(200).json({
         token: token, // JWT token
@@ -121,6 +113,7 @@ app.post('/api/addPayment', async (req, res, next) => {
         Category: category,
         Method: method,
         Amount: amount,
+        CreatedAt: new Date().toISOString(),
     };
     var error = '';
     try {
