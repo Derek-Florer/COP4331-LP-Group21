@@ -74,6 +74,14 @@ function Dashboard() {
     }
   }, []);
 
+  useEffect(() => {
+    if (startDate) {
+      // Set the end date to the last day of the month of the start date
+      const lastDayOfMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+      setEndDate(lastDayOfMonth);
+    }
+  }, [startDate]);
+
   const selectedMonth = startDate.getMonth() + 1; // getMonth() is 0-indexed
   const selectedYear = startDate.getFullYear();
   useEffect(() => {
@@ -345,9 +353,18 @@ function Dashboard() {
                     <PopoverContent className="w-auto p-0">
                       <Calendar
                         mode="single"
-                        selected={endDate}
+                        selected={
+                          startDate
+                            ? new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0) // last day of the month
+                            : endDate
+                        }
                         onSelect={(date) => { date && setEndDate(date) }}
                         initialFocus
+                        disabled={(date) =>
+                          startDate
+                            ? date.getMonth() !== startDate.getMonth() || date.getFullYear() !== startDate.getFullYear()
+                            : false
+                        }
                       />
                     </PopoverContent>
                   </Popover>
