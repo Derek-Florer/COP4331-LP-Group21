@@ -30,7 +30,7 @@ const items = [
   },
   {
     title: "Payments",
-    url: "/subscription",
+    url: "/payments",
     icon: DollarSign,
   },
   {
@@ -128,14 +128,19 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <a
-                        className="cursor-default"
-                        onClick={
-                          item.title === "Logout" ? handleLogout
-                            : item.title === "Set budget"
-                              ? () => setOpenBudgetDialog(true)
-                              : (e) => e.preventDefault()
-                        }
+                        className="cursor-pointer"
+                        onClick={() => {
+                          if (item.title === "Logout") {
+                            handleLogout();
+                          } else if (item.title === "Set budget") {
+                            setOpenBudgetDialog(true);
+                          } else if (item.url) {
+                            navigate(item.url);
+                          }
+                        }}
                       >
+
+
                         <item.icon className={item.title === "Logout" ? "text-destructive" : "text-foreground"} />
                         <span className={item.title === "Logout" ? "text-destructive" : ""}>{item.title}</span>
                       </a>
