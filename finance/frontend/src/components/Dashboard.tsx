@@ -1,7 +1,7 @@
 import * as React from "react";
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Ellipsis, Calendar as CalendarIcon } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu"
-import { Label as RechartLabel, PolarGrid, PolarRadiusAxis, RadialBar, RadialBarChart, } from "recharts";
+import { Label as RechartLabel, PolarGrid, PolarRadiusAxis, PolarAngleAxis, RadialBar, RadialBarChart, } from "recharts";
 import { ChartConfig, ChartContainer } from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar";
@@ -47,6 +47,7 @@ function Dashboard() {
   const [amount, setAmount] = useState('');
   //loading payments
   const [paymentList, setPaymentList] = useState<PaymentType[]>([]);
+  const [paymentChanged, setPaymentChanged] = useState(false);
   //dialog
   const [open, setOpen] = useState(false);
   //date
@@ -55,6 +56,9 @@ function Dashboard() {
   const defaultEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const [startDate, setStartDate] = React.useState<Date>(defaultStartDate);
   const [endDate, setEndDate] = React.useState<Date>(defaultEndDate);
+  //chart
+  const [totalSpent, setTotalSpent] = useState(0);
+
 
   const navigate = useNavigate();
 
@@ -84,6 +88,52 @@ function Dashboard() {
 
   const selectedMonth = startDate.getMonth() + 1; // getMonth() is 0-indexed
   const selectedYear = startDate.getFullYear();
+
+  const fetchTotalSpent = async () => {
+    if (!startDate || !endDate) return;
+
+    const token = localStorage.getItem('token');
+    let userId = '';
+    if (token) {
+      try {
+        const decoded = jwtDecode<DecodedToken>(token);
+        userId = decoded.userId;
+      } catch (err) {
+        console.error("Token decode error:", err);
+        return;
+      }
+    }
+
+    try {
+      const res = await fetch('http://localhost:5000/api/totalSpent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, startDate, endDate }),
+      });
+
+      const data = await res.json();
+      console.log(data);
+      if (data.error) {
+        console.error(data.error);
+      } else {
+        setTotalSpent(data.totalAmount || 0);
+      }
+    } catch (err) {
+      console.error("Error fetching total spent:", err);
+    }
+  };
+  useEffect(() => {
+    fetchTotalSpent();  // Reset the flag after fetching data
+  }, [startDate, endDate]);
+  useEffect(() => {
+    if (paymentChanged) {
+      fetchTotalSpent();
+      setPaymentChanged(false);  // Reset the flag after fetching data
+    }
+  }, [paymentChanged, startDate, endDate]);
+
+
+  // Fetch and set current budget for selectedMonth and selectedYear
   useEffect(() => {
     const fetchBudget = async () => {
       const token = localStorage.getItem('token');
@@ -121,6 +171,7 @@ function Dashboard() {
     }
   }, [selectedMonth, selectedYear]);
 
+
   const handleSubscription = () => {
     navigate('/subscriptions');
   };
@@ -146,6 +197,7 @@ function Dashboard() {
     handleCloseDialog();
     if (success != null) {
       console.log("Payment added");
+      setPaymentChanged(true);
       loadPayments();
     }
   };
@@ -207,6 +259,7 @@ function Dashboard() {
 
       const data = await response.json();
       console.log("subscription removed");
+      setPaymentChanged(true);
     } catch (error) {
       console.error('Request error:', error);
     }
@@ -249,19 +302,25 @@ function Dashboard() {
     }
   }
 
-  //radial chart info.
-  const chartData = [
-    { browser: "safari", visitors: 200, fill: "var(--color-safari)" },
-  ]
+  const spentRatio = currentBudget ? (totalSpent / currentBudget) : 0;
+
+  const chartData = useMemo(() => [
+    {
+      browser: "safari",
+      moneySpent: parseFloat((spentRatio * 100).toFixed(2)), // max 100%
+      fill: "var(--color-safari)",
+    },
+  ], [spentRatio]);
+
   const chartConfig = {
     visitors: {
-      label: "Visitors",
+      label: "% spent",
     },
     safari: {
       label: "Safari",
       color: "hsl(var(--chart-2))",
     },
-  } satisfies ChartConfig
+  };
 
   return (
     <div className="w-screen h-screen bg-muted font-sans text-foreground flex overflow-hidden">
@@ -378,10 +437,10 @@ function Dashboard() {
                 >
                   <RadialBarChart
                     data={chartData}
-                    startAngle={0}
-                    endAngle={250}
-                    innerRadius={70}
-                    outerRadius={95}
+                    startAngle={90}
+                    endAngle={-270}
+                    innerRadius={80}
+                    outerRadius={105}
                     cx={100} // Moves chart left
                   >
                     <PolarGrid
@@ -390,7 +449,19 @@ function Dashboard() {
                       stroke="none"
                       polarRadius={[76, 64]}
                     />
-                    <RadialBar dataKey="visitors" background cornerRadius={10} />
+                    <PolarAngleAxis
+                      type="number"
+                      domain={[0, 100]} // IMPORTANT: defines the 100% cap
+                      angleAxisId={0}
+                      tick={false}
+                    />
+
+                    <RadialBar
+                      dataKey="moneySpent"
+                      angleAxisId={0}
+                      background
+                      cornerRadius={10}
+                    />
                     <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
                       <RechartLabel
                         content={({ viewBox }) => {
@@ -407,14 +478,14 @@ function Dashboard() {
                                   y={viewBox.cy}
                                   className="fill-foreground text-2xl font-bold"
                                 >
-                                  {chartData[0].visitors.toLocaleString()}
+                                  ${totalSpent.toFixed(2)}
                                 </tspan>
                                 <tspan
                                   x={viewBox.cx}
                                   y={(viewBox.cy || 0) + 20}
                                   className="fill-muted-foreground text-sm"
                                 >
-                                  Visitors
+                                  Spent
                                 </tspan>
                               </text>
                             )
@@ -490,16 +561,29 @@ function Dashboard() {
                   <TableHead className="w-[100px]">Payment</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Method</TableHead>
+                  <TableHead className="text-left">Date</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paymentList.map((payment) => (
                   <TableRow key={payment._id} className="hover:bg-gray-200">
+                    {/* Payment Name */}
                     <TableCell className="font-medium">{payment.Payment}</TableCell>
+
+                    {/* Category */}
                     <TableCell>{payment.Category}</TableCell>
+
+                    {/* Method */}
                     <TableCell>{payment.Method}</TableCell>
+
+                    {/* Date */}
+                    <TableCell>{new Date(payment.CreatedAt).toLocaleDateString('en-US')}</TableCell>
+
+                    {/* Amount */}
                     <TableCell className="text-right">${Number(payment.Amount).toFixed(2)}</TableCell>
+
+                    {/* Ellipsis Button for Actions */}
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -512,9 +596,10 @@ function Dashboard() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem>Edit</DropdownMenuItem>
                           <DropdownMenuItem
-                            className='text-destructive hover:text-destructive focus:text-destructive'
+                            className="text-destructive hover:text-destructive focus:text-destructive"
                             onClick={() => handleRemovePayment(payment._id)}>
-                            Delete</DropdownMenuItem>
+                            Delete
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

@@ -209,6 +209,45 @@ app.post('/api/getBudget', async (req, res) => {
     }
 });
 
+app.post('/api/totalSpent', async (req, res) => {
+    const { userId, startDate, endDate } = req.body;
+
+    const estStart = DateTime.fromISO(startDate).setZone('America/New_York').startOf('day').toJSDate();
+    const estEnd = DateTime.fromISO(endDate).setZone('America/New_York').endOf('day').toJSDate();
+
+    try {
+        const db = client.db('finance');
+        const result = await db.collection('Payments').aggregate([
+            {
+                $match: {
+                    UserId: userId,
+                    CreatedAt: {
+                        $gte: estStart,
+                        $lte: estEnd,
+                    },
+                },
+            },
+            {
+                $addFields: {
+                    Amount: { $toDouble: "$Amount" }, // Ensure Amount is parsed as a float
+                },
+            },
+            {
+                $group: {
+                    _id: null, // We're not grouping by any specific field, just getting the total sum
+                    totalAmount: { $sum: "$Amount" },
+                },
+            },
+        ]).toArray();
+        const totalAmount = result.length > 0 ? result[0].totalAmount : 0;
+        //console.log(totalAmount)
+        res.status(200).json({ totalAmount }); // Returning the total sum of payments
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to load payments' });
+    }
+});
+
 const url = process.env.MONGO_URL;
 const client = new MongoClient(url);
 client.connect();
