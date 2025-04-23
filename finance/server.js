@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import { DateTime } from 'luxon';
+import { parse } from 'path';
 
 dotenv.config();
 
@@ -167,73 +168,45 @@ app.post('/api/removePayment', async (req, res, next) => {
     res.status(200).json(ret);
 });
 
-app.post('/api/addSubscription', async (req, res, next) => {
-    const { userId, subscriptionName, price } = req.body;
-    const newSubscription = {
+app.post('/api/addBudget', async (req, res, next) => {
+    const { userId, month, year, amount } = req.body;
+    const parsedMonth = parseInt(month);
+    const estTime = DateTime.now().setZone('America/New_York');
+    const estDate = estTime.toJSDate();
+    const newBudget = {
         UserId: userId,
-        SubscriptionName: subscriptionName,
-        Price: price
+        Month: parsedMonth,
+        Year: year,
+        Amount: amount,
+        CreatedAt: estDate,
     };
     var error = '';
     try {
         const db = client.db('finance');
-        const result = db.collection('Subscriptions').insertOne(newSubscription);
-    }
-    catch (e) {
+        const result = await db.collection('Budgets').insertOne(newBudget);
+    } catch (e) {
         error = e.toString();
     }
-    var ret = { error: error };
+    const ret = { error: error };
     res.status(200).json(ret);
 });
 
-app.post('/api/removeSubscription', async (req, res, next) => {
-    const { id } = req.body;
-    var error = '';
+app.post('/api/getBudget', async (req, res) => {
+    const { userId, month, year } = req.body;
+
     try {
         const db = client.db('finance');
-        const result = db.collection('Subscriptions').deleteOne({ _id: ObjectId.createFromHexString(id) });
-    }
-    catch (e) {
-        error = e.toString();
-    }
-    var ret = { error: error };
-    res.status(200).json(ret);
-});
+        const budget = await db.collection('Budgets').findOne({ UserId: userId, Month: parseInt(month), Year: parseInt(year) });
 
-app.post('/api/loadSubscriptions', async (req, res, next) => {
-    const { userId } = req.body;
-    var error = '';
-    try {
-        const db = client.db('finance');
-        const results = await db.collection('Subscriptions').find({ UserId: userId }).toArray();
+        if (!budget) {
+            return res.json({ amount: 0 }); // or null if you prefer
+        }
 
-        //const subscriptions = results.map(subscription => ({
-        //  subscriptionName: subscription.subscriptionName,
-        //  price: subscription.price
-        //}));
-
-        var ret = results
-        res.status(200).json(ret);
+        res.json({ amount: budget.Amount });
     } catch (error) {
-        console.error('Error fetching subscriptions:', error);
-        res.status(500).json({ results: [], error: 'Failed to fetch subscriptions.' });
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-});
-
-app.post('/api/searchcards', async (req, res, next) => {
-    // incoming: userId, search
-    // outgoing: results[], error
-    var error = '';
-    const { userId } = req.body;
-    var _search = search.trim();
-    const db = client.db('cardsApp');
-    const results = await db.collection('Cards').find({ "Card": { $regex: _search + '.*' } }).toArray();
-    var _ret = [];
-    for (var i = 0; i < results.length; i++) {
-        _ret.push(results[i].Card);
-    }
-    var ret = { results: _ret, error: error };
-    res.status(200).json(ret);
 });
 
 const url = process.env.MONGO_URL;

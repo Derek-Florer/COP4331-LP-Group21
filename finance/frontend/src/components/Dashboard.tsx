@@ -38,6 +38,8 @@ function Dashboard() {
 
   const [message, setMessage] = useState('');
   const [firstName, setFirstName] = useState('')
+  //budget
+  const [currentBudget, setCurrentBudget] = useState<number | null>(null);
   //transaction info
   const [payment, setPayment] = useState('');
   const [category, setCategory] = useState('');
@@ -71,6 +73,45 @@ function Dashboard() {
       }
     }
   }, []);
+
+  const selectedMonth = startDate.getMonth() + 1; // getMonth() is 0-indexed
+  const selectedYear = startDate.getFullYear();
+  useEffect(() => {
+    const fetchBudget = async () => {
+      const token = localStorage.getItem('token');
+      let userId = '';
+      if (token) {
+        try {
+          const decodedToken = jwtDecode<DecodedToken>(token);
+          userId = decodedToken.userId;
+        } catch (error) {
+          console.error('Token error:', error);
+          return;
+        }
+      }
+
+      try {
+        const response = await fetch('http://localhost:5000/api/getBudget', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            month: selectedMonth,
+            year: selectedYear
+          }),
+        });
+
+        const res = await response.json();
+        setCurrentBudget(res.amount ?? 0); // fallback to 0
+      } catch (error) {
+        console.error('Fetch error:', error);
+      }
+    };
+
+    if (selectedMonth && selectedYear) {
+      fetchBudget();
+    }
+  }, [selectedMonth, selectedYear]);
 
   const handleSubscription = () => {
     navigate('/subscriptions');
@@ -243,9 +284,22 @@ function Dashboard() {
             {/* Report Card */}
             <Card className="shadow-xl border border-border bg-card">
               <CardHeader>
-                <CardTitle className="text-2xl">Monthly Report</CardTitle>
+                <CardTitle className="text-2xl text-muted-foreground/100">
+                  Financial Report:
+                  {selectedMonth ? (
+                    <span className="px-2 text-foreground">
+                      {new Date(0, selectedMonth - 1).toLocaleString("default", { month: "long" })}
+                    </span>
+                  ) : null}
+                </CardTitle>
                 <CardDescription className="text-muted-foreground">
-
+                  <span className="block text-xl font-medium text-muted-foreground pr-4">
+                    Budget for this month:
+                    {currentBudget !== null ? (
+                      <span className="px-2 text-xl font-medium text-foreground pr-4">
+                        ${currentBudget.toLocaleString()}
+                      </span>) : 'Loading...'}
+                  </span>
                   <span className="text-lg font-medium text-muted-foreground pr-4">From</span>
 
                   {/* Start Date */}
@@ -266,7 +320,7 @@ function Dashboard() {
                       <Calendar
                         mode="single"
                         selected={startDate}
-                        onSelect={(date) => {date && setStartDate(date)}}
+                        onSelect={(date) => { date && setStartDate(date) }}
                         initialFocus
                       />
                     </PopoverContent>
@@ -292,7 +346,7 @@ function Dashboard() {
                       <Calendar
                         mode="single"
                         selected={endDate}
-                        onSelect={(date) => {date && setEndDate(date)}}
+                        onSelect={(date) => { date && setEndDate(date) }}
                         initialFocus
                       />
                     </PopoverContent>
