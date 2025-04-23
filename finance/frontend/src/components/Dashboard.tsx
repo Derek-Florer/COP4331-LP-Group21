@@ -16,7 +16,7 @@ import { Label as RechartLabel, PolarGrid, PolarRadiusAxis, PolarAngleAxis, Radi
 import { ChartConfig, ChartContainer } from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger, } from "@/components/ui/popover";
 
 interface DecodedToken {
@@ -48,6 +48,9 @@ function Dashboard() {
   //loading payments
   const [paymentList, setPaymentList] = useState<PaymentType[]>([]);
   const [paymentChanged, setPaymentChanged] = useState(false);
+  //edit payments
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editedPayment, setEditedPayment] = useState<any>({});
   //dialog
   const [open, setOpen] = useState(false);
   //date
@@ -302,8 +305,28 @@ function Dashboard() {
     }
   }
 
-  const spentRatio = currentBudget ? (totalSpent / currentBudget) : 0;
 
+  const handleSave = async (id: string) => {
+    try {
+      const res = await fetch('http://localhost:5000/api/updatePayment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...editedPayment, _id: id }),
+      });
+      const data = await res.json();
+      if (!data.error) {
+        // Optional: refetch or update paymentList
+        setEditingId(null);
+        fetchTotalSpent();
+        loadPayments();
+      }
+    } catch (err) {
+      console.error('Failed to save edit:', err);
+    }
+  };
+
+
+  const spentRatio = currentBudget ? (totalSpent / currentBudget) : 0;
   const chartData = useMemo(() => [
     {
       browser: "safari",
@@ -566,45 +589,128 @@ function Dashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paymentList.map((payment) => (
-                  <TableRow key={payment._id} className="hover:bg-gray-200">
-                    {/* Payment Name */}
-                    <TableCell className="font-medium">{payment.Payment}</TableCell>
-
-                    {/* Category */}
-                    <TableCell>{payment.Category}</TableCell>
-
-                    {/* Method */}
-                    <TableCell>{payment.Method}</TableCell>
-
-                    {/* Date */}
-                    <TableCell>{new Date(payment.CreatedAt).toLocaleDateString('en-US')}</TableCell>
-
-                    {/* Amount */}
-                    <TableCell className="text-right">${Number(payment.Amount).toFixed(2)}</TableCell>
-
-                    {/* Ellipsis Button for Actions */}
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="focus:outline-none focus:ring-0">
-                            <Ellipsis className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuLabel>{payment.Payment}</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive hover:text-destructive focus:text-destructive"
-                            onClick={() => handleRemovePayment(payment._id)}>
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {paymentList.map((payment) => {
+                  const isEditing = editingId === payment._id;
+                  return (
+                    <TableRow key={payment._id} className="hover:bg-gray-200">
+                      <TableCell className="font-medium">
+                        {isEditing ? (
+                          <Input
+                            value={editedPayment.Payment}
+                            onChange={(e) => setEditedPayment({ ...editedPayment, Payment: e.target.value })}
+                            className="bg-white"
+                          />
+                        ) : (
+                          payment.Payment
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {isEditing ? (
+                          <Input
+                            value={editedPayment.Category}
+                            onChange={(e) => setEditedPayment({ ...editedPayment, Category: e.target.value })}
+                            className="bg-white"
+                          />
+                        ) : (
+                          payment.Category
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {isEditing ? (
+                          <Input
+                            value={editedPayment.Method}
+                            onChange={(e) => setEditedPayment({ ...editedPayment, Method: e.target.value })}
+                            className="bg-white"
+                          />
+                        ) : (
+                          payment.Method
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {isEditing && editingId === payment._id ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "min-w-[140px] justify-start text-left font-mono bg-white",
+                                  !editedPayment.CreatedAt && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {editedPayment.CreatedAt
+                                  ? format(new Date(editedPayment.CreatedAt), "M/d/yyyy")
+                                  : <span>Select date</span>}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={new Date(editedPayment.CreatedAt)}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    const isoString = date.toISOString();
+                                    setEditedPayment({ ...editedPayment, CreatedAt: isoString });
+                                  }
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          format(new Date(payment.CreatedAt), "M/d/yyyy")
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {isEditing ? (
+                          <Input
+                            type="number"
+                            value={editedPayment.Amount}
+                            onChange={(e) => setEditedPayment({ ...editedPayment, Amount: e.target.value })}
+                            className="bg-white"
+                          />
+                        ) : (
+                          `$${Number(payment.Amount).toFixed(2)}`
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="focus:outline-none focus:ring-0">
+                              <Ellipsis className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuLabel>{payment.Payment}</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {isEditing ? (
+                              <>
+                                <DropdownMenuItem onClick={() => handleSave(payment._id)}>Save</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setEditingId(null)}>Cancel</DropdownMenuItem>
+                              </>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditingId(payment._id);
+                                  setEditedPayment({ ...payment });
+                                }}
+                              >
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive hover:text-destructive focus:text-destructive"
+                              onClick={() => handleRemovePayment(payment._id)}
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

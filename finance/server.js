@@ -168,6 +168,43 @@ app.post('/api/removePayment', async (req, res, next) => {
     res.status(200).json(ret);
 });
 
+app.post('/api/updatePayment', async (req, res) => {
+    const { _id, Payment, Category, Method, Amount, CreatedAt } = req.body;
+
+    const estDate = DateTime.fromISO(CreatedAt, { zone: 'utc' }) // assuming it's ISO
+        .setZone('America/New_York')
+        .toJSDate();
+
+    if (!_id) {
+        return res.status(400).json({ error: "Missing payment ID" });
+    }
+
+    try {
+        const db = client.db('finance');
+        const result = await db.collection('Payments').updateOne(
+            { _id: new ObjectId(String(_id)) },
+            {
+                $set: {
+                    Payment,
+                    Category,
+                    Method,
+                    Amount: parseFloat(Amount), // Ensure number type
+                    CreatedAt: estDate,
+                }
+            }
+        );
+
+        if (result.modifiedCount === 0) {
+            return res.status(404).json({ error: "Payment not found or unchanged" });
+        }
+
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error("Error updating payment:", error);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
 app.post('/api/addBudget', async (req, res, next) => {
     const { userId, month, year, amount } = req.body;
     const parsedMonth = parseInt(month);
@@ -183,12 +220,26 @@ app.post('/api/addBudget', async (req, res, next) => {
     var error = '';
     try {
         const db = client.db('finance');
-        const result = await db.collection('Budgets').insertOne(newBudget);
+        const existingBudget = await db.collection('Budgets').findOne({
+            UserId: userId,
+            Month: parsedMonth,
+            Year: year
+        });
+        if (existingBudget) {
+            // If the budget exists, update it
+            const result = await db.collection('Budgets').updateOne(
+                { _id: existingBudget._id }, // Find the existing budget by its ID
+                { $set: { Amount: amount, CreatedAt: estDate } } // Update the amount and timestamp
+            );
+            res.status(200).json({ success: true, message: 'Budget updated successfully' });
+        } else {
+            // If no existing budget, create a new one
+            const result = await db.collection('Budgets').insertOne(newBudget);
+            res.status(200).json({ success: true, message: 'Budget created successfully' });
+        }
     } catch (e) {
         error = e.toString();
     }
-    const ret = { error: error };
-    res.status(200).json(ret);
 });
 
 app.post('/api/getBudget', async (req, res) => {
