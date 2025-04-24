@@ -2,7 +2,7 @@ import * as React from "react";
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
-import { Ellipsis, Calendar as CalendarIcon } from "lucide-react"
+import { Ellipsis, Calendar as CalendarIcon, Beef, HousePlus, Cable, Car, UtensilsCrossed, TvMinimalPlay, Cross, PiggyBank } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
@@ -12,12 +12,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu"
-import { Label as RechartLabel, PolarGrid, PolarRadiusAxis, PolarAngleAxis, RadialBar, RadialBarChart, } from "recharts";
-import { ChartConfig, ChartContainer } from "@/components/ui/chart"
+import { Label as RechartLabel, LabelList, PolarGrid, PolarRadiusAxis, PolarAngleAxis, RadialBar, RadialBarChart, Pie, PieChart, Cell } from "recharts";
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar";
 import { format, parse } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger, } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip } from "@/components/ui/tooltip";
+
 
 interface DecodedToken {
   userId: string,
@@ -59,6 +62,7 @@ function Dashboard() {
   const defaultEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const [startDate, setStartDate] = React.useState<Date>(defaultStartDate);
   const [endDate, setEndDate] = React.useState<Date>(defaultEndDate);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   //chart
   const [totalSpent, setTotalSpent] = useState(0);
 
@@ -222,6 +226,7 @@ function Dashboard() {
       category: category,
       method: method,
       amount: amount,
+      createdAt: selectedDate,
     };
     const js = JSON.stringify(obj);
     try {
@@ -325,7 +330,7 @@ function Dashboard() {
     }
   };
 
-
+  //radial chart
   const spentRatio = currentBudget ? (totalSpent / currentBudget) : 0;
   const chartData = useMemo(() => [
     {
@@ -343,6 +348,96 @@ function Dashboard() {
       label: "Safari",
       color: "hsl(var(--chart-2))",
     },
+  };
+
+
+  //piechart
+  const categoryData = [
+    "Groceries", "Rent", "Utilities", "Transportation", "Dining",
+    "Healthcare", "Entertainment", "Subscriptions", "Education", "Savings", "Other"
+  ];
+  const [categoryTotals, setCategoryTotals] = useState<any[]>([]);
+  const fetchSpentPerCategory = async (category: string): Promise<number> => {
+    const token = localStorage.getItem('token');
+    let userId = '';
+    if (token) {
+      try {
+        const decodedToken = jwtDecode<DecodedToken>(token);
+        userId = decodedToken.userId;
+      } catch (error) {
+        console.error('Token error:', error);
+        return 0;
+      }
+    }
+    try {
+      const res = await fetch('http://localhost:5000/api/spendingByCategory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category, startDate, endDate, userId }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        console.error(`Error for category ${category}:`, data.error);
+        return 0;
+      }
+      return data.totalAmount || 0;
+    } catch (err) {
+      console.error(`Fetch error for category ${category}:`, err);
+      return 0;
+    }
+  };
+  const getCategoryData = async () => {
+    // Fetch category spending data in parallel
+    if (totalSpent === 0) {
+      console.error("Total spent is 0, cannot calculate percentages.");
+      const nullCategoryValues = [{ category: "none", value: 100 }];
+      setCategoryTotals(nullCategoryValues);
+      return;
+    }
+    const categoryValues = await Promise.all(
+      categoryData.map(async (category) => {
+        const categorySpent = await fetchSpentPerCategory(category);
+        if (categorySpent === 0) return null; // Skip if there's no spending for this category
+        const percentage = (categorySpent / totalSpent) * 100;
+        return { category, value: percentage };
+      })
+    );
+    // Filter out any null values (categories with zero spending)
+    const filteredCategoryValues = categoryValues.filter((entry) => entry !== null);
+    setCategoryTotals(filteredCategoryValues);
+  };
+
+  useEffect(() => {
+    getCategoryData();
+    console.log(categoryTotals)
+  }, [totalSpent]);
+
+  const categoryColors = {
+    Groceries: "#1B6CA8",         // Deep Ocean Blue
+    Rent: "#0077B6",              // Blue Sea
+    Utilities: "#0096C7",         // Caribbean Blue
+    Transportation: "#00B4D8",    // Bright Cyan
+    Dining: "#48CAE4",            // Aqua Sky
+    Healthcare: "#90E0EF",        // Light Aqua
+    Entertainment: "#ADE8F4",     // Pale Blue
+    Subscriptions: "#CAF0F8",     // Very Light Blue
+    Education: "#1864AB",         // Steel Blue
+    Savings: "#144E75",           // Slate Blue
+    Other: "#0D3B66",              // Dark Ocean Navy
+    none: "gray"
+  };
+
+
+  //category icons
+  const categoryIcons: Record<string, React.ReactNode> = {
+    Groceries: <Beef className="mr-2 h-4 w-4 inline" />,
+    Rent: <HousePlus className="mr-2 h-4 w-4 inline" />,
+    Utilities: <Cable className="mr-2 h-4 w-4 inline" />,
+    Transportation: <Car className="mr-2 h-4 w-4 inline" />,
+    Dining: <UtensilsCrossed className="mr-2 h-4 w-4 inline" />,
+    Entertainment: <TvMinimalPlay className="mr-2 h-4 w-4 inline" />,
+    Healthcare: <Cross className="mr-2 h-4 w-4 inline" />,
+    Savings: <PiggyBank className="mr-2 h-4 w-4 inline" />,
   };
 
   return (
@@ -453,79 +548,121 @@ function Dashboard() {
 
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex-1 pb-0">
-                <ChartContainer
-                  config={chartConfig}
-                  className="mx-auto max-h-[220px] w-full flex items-center justify-center"
-                >
-                  <RadialBarChart
-                    data={chartData}
-                    startAngle={90}
-                    endAngle={-270}
-                    innerRadius={80}
-                    outerRadius={105}
-                    cx={100} // Moves chart left
+              <CardContent className="flex-1 pb-0 flex flex-row justify-between items-center">
+                <div className="w-full max-w-[50%]">
+                  <ChartContainer
+                    config={chartConfig}
+                    className="mx-auto max-h-[220px] w-full flex items-center justify-center"
                   >
-                    <PolarGrid
-                      gridType="circle"
-                      radialLines={false}
-                      stroke="none"
-                      polarRadius={[76, 64]}
-                    />
-                    <PolarAngleAxis
-                      type="number"
-                      domain={[0, 100]} // IMPORTANT: defines the 100% cap
-                      angleAxisId={0}
-                      tick={false}
-                    />
+                    <RadialBarChart
+                      data={chartData}
+                      startAngle={90}
+                      endAngle={-270}
+                      innerRadius={80}
+                      outerRadius={105}
+                      cx={100} // Moves chart left
+                    >
+                      <PolarGrid
+                        gridType="circle"
+                        radialLines={false}
+                        stroke="none"
+                        polarRadius={[76, 64]}
+                      />
+                      <PolarAngleAxis
+                        type="number"
+                        domain={[0, 100]} // IMPORTANT: defines the 100% cap
+                        angleAxisId={0}
+                        tick={false}
+                      />
 
-                    <RadialBar
-                      dataKey="moneySpent"
-                      angleAxisId={0}
-                      background
-                      cornerRadius={10}
-                    />
-                    <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
-                      <RechartLabel
-                        content={({ viewBox }) => {
-                          if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                            return (
-                              <text
-                                x={viewBox.cx}
-                                y={viewBox.cy}
-                                textAnchor="middle"
-                                dominantBaseline="middle"
-                              >
-                                <tspan
+                      <RadialBar
+                        dataKey="moneySpent"
+                        angleAxisId={0}
+                        background
+                        cornerRadius={10}
+                      />
+                      <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
+                        <RechartLabel
+                          content={({ viewBox }) => {
+                            if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                              return (
+                                <text
                                   x={viewBox.cx}
                                   y={viewBox.cy}
-                                  className="fill-foreground text-2xl font-bold"
+                                  textAnchor="middle"
+                                  dominantBaseline="middle"
                                 >
-                                  ${totalSpent.toFixed(2)}
-                                </tspan>
-                                <tspan
-                                  x={viewBox.cx}
-                                  y={(viewBox.cy || 0) + 20}
-                                  className="fill-muted-foreground text-sm"
-                                >
-                                  Spent
-                                </tspan>
-                              </text>
-                            )
-                          }
-                        }}
-                      />
-                    </PolarRadiusAxis>
-                  </RadialBarChart>
-                </ChartContainer>
-              </CardContent>
-              <CardFooter>
-                <p className="text-sm text-muted-foreground">Card Footer</p>
-              </CardFooter>
-            </Card>
+                                  <tspan
+                                    x={viewBox.cx}
+                                    y={viewBox.cy}
+                                    className="fill-foreground text-2xl font-bold"
+                                  >
+                                    ${totalSpent.toFixed(2)}
+                                  </tspan>
+                                  <tspan
+                                    x={viewBox.cx}
+                                    y={(viewBox.cy || 0) + 20}
+                                    className="fill-muted-foreground text-sm"
+                                  >
+                                    Spent
+                                  </tspan>
+                                </text>
+                              );
+                            }
+                          }}
+                        />
+                      </PolarRadiusAxis>
+                    </RadialBarChart>
+                  </ChartContainer>
+                </div>
 
+                {/* Pie chart on the right side */}
+                <div className="w-[600px]">
+                  <ChartContainer
+                    config={chartConfig}
+                    className="mx-auto max-h-[400px] w-full flex items-center justify-center"
+                  >
+                    <PieChart width={600} height={400}>
+                      <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent hideLabel />}
+                      />
+                      <Pie
+                        data={categoryTotals}
+                        dataKey="value"
+                        nameKey="category"
+                        cx="50%" // Center the pie chart horizontally
+                        cy="50%" // Center the pie chart vertically
+                        innerRadius={0}
+                        outerRadius={85}
+                      >
+                        <LabelList
+                          dataKey="browser"
+                          className="fill-background"
+                          stroke="none"
+                          fontSize={12}
+                          formatter={(value: keyof typeof category) =>
+                            category[value]
+                          }
+                        />
+                        {categoryTotals.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={categoryColors[entry.category as keyof typeof categoryColors] || "#8884d8"}
+                          />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ChartContainer>
+                </div>
+              </CardContent>
+              <CardFooter />
+            </Card>
+          </div>
+
+          <div className="w-full max-w-4xl space-y-8 pt-8">
             {/* Invoice Table */}
-            <Table>
+            <Table className="w-full">
               <TableCaption>A list of your recent transactions.</TableCaption>
               <TableHeader>
                 <h2 className="text-xl font-semibold whitespace-nowrap">Recent Transactions</h2>
@@ -543,7 +680,7 @@ function Dashboard() {
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="payment" className="text-right">Payment</Label>
+                        <Label htmlFor="payment" className="text-right">Description</Label>
                         <Input
                           onChange={(e) => setPayment(e.target.value)}
                           className="col-span-3"
@@ -551,10 +688,43 @@ function Dashboard() {
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="category" className="text-right">Category</Label>
-                        <Input
-                          onChange={(e) => setCategory(e.target.value)}
-                          className="col-span-3"
-                        />
+                        <Select onValueChange={setCategory}>
+                          <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Groceries"><Beef />Groceries</SelectItem>
+                            <SelectItem value="Rent"><HousePlus />Rent</SelectItem>
+                            <SelectItem value="Utilities"><Cable />Utilities</SelectItem>
+                            <SelectItem value="Transportation"><Car />Transportation</SelectItem>
+                            <SelectItem value="Dining"><UtensilsCrossed />Dining</SelectItem>
+                            <SelectItem value="Entertainment"><TvMinimalPlay />Entertainment</SelectItem>
+                            <SelectItem value="Healthcare"><Cross />Healthcare</SelectItem>
+                            <SelectItem value="Savings"><PiggyBank />Savings</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="createdAt" className="text-right">Date</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="justify-start text-left font-normal col-span-3"
+                            >
+                              {selectedDate ? format(selectedDate, "MM/dd/yyyy") : <span>Pick a date</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={selectedDate}
+                              onSelect={setSelectedDate}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="method" className="text-right">Method</Label>
@@ -581,11 +751,11 @@ function Dashboard() {
                 </Dialog>
 
                 <TableRow>
-                  <TableHead className="w-[100px]">Payment</TableHead>
+                  <TableHead className="w-[100px]">Description</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead>Method</TableHead>
-                  <TableHead className="text-left">Date</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Amount</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -606,24 +776,76 @@ function Dashboard() {
                       </TableCell>
                       <TableCell>
                         {isEditing ? (
-                          <Input
+                          <Select
                             value={editedPayment.Category}
-                            onChange={(e) => setEditedPayment({ ...editedPayment, Category: e.target.value })}
-                            className="bg-white"
-                          />
+                            onValueChange={(value) =>
+                              setEditedPayment({ ...editedPayment, Category: value })
+                            }
+                          >
+                            <SelectTrigger className="bg-white">
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Groceries">
+                                <div className="flex items-center gap-2">
+                                  <Beef className="h-4 w-4" />
+                                  Groceries
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="Rent">
+                                <div className="flex items-center gap-2">
+                                  <HousePlus className="h-4 w-4" />
+                                  Rent
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="Utilities">
+                                <div className="flex items-center gap-2">
+                                  <Cable className="h-4 w-4" />
+                                  Utilities
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="Transportation">
+                                <div className="flex items-center gap-2">
+                                  <Car className="h-4 w-4" />
+                                  Transportation
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="Dining">
+                                <div className="flex items-center gap-2">
+                                  <UtensilsCrossed className="h-4 w-4" />
+                                  Dining
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="Entertainment">
+                                <div className="flex items-center gap-2">
+                                  <TvMinimalPlay className="h-4 w-4" />
+                                  Entertainment
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="Healthcare">
+                                <div className="flex items-center gap-2">
+                                  <Cross className="h-4 w-4" />
+                                  Healthcare
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="Savings">
+                                <div className="flex items-center gap-2">
+                                  <PiggyBank className="h-4 w-4" />
+                                  Savings
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="Other">
+                                <div className="flex items-center gap-2">
+                                  Other
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
                         ) : (
-                          payment.Category
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {isEditing ? (
-                          <Input
-                            value={editedPayment.Method}
-                            onChange={(e) => setEditedPayment({ ...editedPayment, Method: e.target.value })}
-                            className="bg-white"
-                          />
-                        ) : (
-                          payment.Method
+                          <div className="flex items-center gap-2">
+                            {categoryIcons[payment.Category] || null}
+                            <span>{payment.Category}</span>
+                          </div>
                         )}
                       </TableCell>
                       <TableCell>
@@ -661,7 +883,18 @@ function Dashboard() {
                           format(new Date(payment.CreatedAt), "M/d/yyyy")
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell>
+                        {isEditing ? (
+                          <Input
+                            value={editedPayment.Method}
+                            onChange={(e) => setEditedPayment({ ...editedPayment, Method: e.target.value })}
+                            className="bg-white"
+                          />
+                        ) : (
+                          payment.Method
+                        )}
+                      </TableCell>
+                      <TableCell>
                         {isEditing ? (
                           <Input
                             type="number"

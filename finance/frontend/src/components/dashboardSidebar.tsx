@@ -130,10 +130,13 @@ export function AppSidebar() {
                       <a
                         className="cursor-default"
                         onClick={
-                          item.title === "Logout" ? handleLogout
+                          item.title === "Logout"
+                            ? handleLogout
                             : item.title === "Set budget"
                               ? () => setOpenBudgetDialog(true)
-                              : (e) => e.preventDefault()
+                              : item.title === "Payments"
+                                ? () => { window.location.href = '/payments' }
+                                : () => { window.location.href = '/dashboard' }
                         }
                       >
                         <item.icon className={item.title === "Logout" ? "text-destructive" : "text-foreground"} />

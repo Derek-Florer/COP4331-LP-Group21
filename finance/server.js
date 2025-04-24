@@ -108,9 +108,9 @@ app.post('/api/login', async (req, res, next) => {
 });
 
 app.post('/api/addPayment', async (req, res, next) => {
-    const { userId, payment, category, method, amount } = req.body;
+    const { userId, payment, category, method, amount, createdAt } = req.body;
 
-    const estTime = DateTime.now().setZone('America/New_York');
+    const estTime = DateTime.fromJSDate(new Date(createdAt)).setZone('America/New_York');
     const estDate = estTime.toJSDate();
 
     const newPayment = {
@@ -296,6 +296,46 @@ app.post('/api/totalSpent', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to load payments' });
+    }
+});
+
+app.post('/api/spendingByCategory', async (req, res) => {
+    const { userId, category, startDate, endDate } = req.body;
+    if (!userId || !category || !startDate || !endDate) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+    const estStart = DateTime.fromISO(startDate).setZone('America/New_York').startOf('day').toJSDate();
+    const estEnd = DateTime.fromISO(endDate).setZone('America/New_York').endOf('day').toJSDate();
+    try {
+        const db = client.db('finance');
+        const result = await db.collection('Payments').aggregate([
+            {
+                $match: {
+                    UserId: userId,
+                    Category: category,
+                    CreatedAt: {
+                        $gte: estStart,
+                        $lte: estEnd,
+                    },
+                },
+            },
+            {
+                $addFields: {
+                    Amount: { $toDouble: "$Amount" }, // Parse string to float
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalAmount: { $sum: "$Amount" },
+                },
+            },
+        ]).toArray();
+        const totalAmount = result.length > 0 ? result[0].totalAmount : 0;
+        res.status(200).json({ totalAmount });
+    } catch (err) {
+        console.error("Error fetching category spend:", err);
+        res.status(500).json({ error: 'Failed to load spending by category' });
     }
 });
 
