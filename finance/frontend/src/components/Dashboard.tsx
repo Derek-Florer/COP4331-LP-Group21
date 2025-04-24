@@ -778,7 +778,7 @@ function Dashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paymentList.map((payment) => {
+                {paymentList.sort((a, b) => new Date(b.CreatedAt).getTime() - new Date(a.CreatedAt).getTime()).slice(0, 9).map((payment) => {
                   const isEditing = editingId === payment._id;
                   return (
                     <TableRow key={payment._id} className="hover:bg-gray-200">
