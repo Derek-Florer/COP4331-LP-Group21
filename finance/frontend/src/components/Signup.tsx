@@ -128,7 +128,10 @@ function Signup() {
                   />
                 </div>
 
-                <Button type="submit" className="w-full mt-2">
+                <Button
+                  type="submit"
+                  className={`w-full mt-2 !bg-blue-700 !text-white hover:!bg-blue-800 transition-colors duration-300 `}
+                >
                   Create Account
                 </Button>
 

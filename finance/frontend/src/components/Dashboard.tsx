@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar";
 import { format, parse } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger, } from "@/components/ui/popover";
+import { motion } from "framer-motion";
 
 interface DecodedToken {
   userId: string,
@@ -346,29 +347,34 @@ function Dashboard() {
   };
 
   return (
-    <div className="w-screen h-screen bg-muted font-sans text-foreground flex overflow-hidden">
+    <motion.div
+      className="w-screen h-screen bg-gradient-to-br from-blue-600 to-purple-700 font-sans text-white flex overflow-hidden"
+      initial={{ x: 200, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ duration: 0.8, ease: "easeInOut" }}
+    >  
       <SidebarProvider >
         {/* Sidebar */}
         <aside
           className={
-            `bg-card border-r border-trans shadow-lg transition-all duration-300 
+            `<div className="bg-white text-black rounded-xl p-6 shadow-xl mt-10">
             ${isSidebarOpen ? 'w-64' : 'w-0'} overflow-hidden`
           }>
           <AppSidebar />
         </aside>
 
         {/* Main content area */}
-        <SidebarTrigger onClick={toggleSidebar} />
+        <SidebarTrigger onClick={toggleSidebar} className="text-black hover:text-gray-200" />
         <main
           className={
-            `flex-1 flex flex-col items-center justify-start p-8 overflow-y-auto transition-all duration-300 
+            `flex-1 flex flex-col items-center justify-start p-8 overflow-y-auto transition-all duration-300 text-white
             ${isSidebarOpen ? '' : 'w-full'}`
           }> {/* Trigger to toggle sidebar */}
 
           <div className="w-full max-w-2xl space-y-8">
             {/* Greeting */}
-            <h1 className="text-3xl font-bold text-primary">
-              Hi, <span className="text-foreground/70">{firstName}</span>!
+            <h1 className="text-4xl font-bold text-white">
+              Hi, <span className="text-gray-200">{firstName}</span>!
             </h1>
 
             {/* Report Card */}
@@ -525,6 +531,7 @@ function Dashboard() {
             </Card>
 
             {/* Invoice Table */}
+            <div className="bg-white text-black rounded-xl p-6 shadow-xl mt-10 w-full max-w-2xl mx-auto">
             <Table>
               <TableCaption>A list of your recent transactions.</TableCaption>
               <TableHeader>
@@ -532,7 +539,7 @@ function Dashboard() {
                 {/* Add a payment */}
                 <Dialog open={open} onOpenChange={setOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" onClick={handleOpenDialog}>Add</Button>
+                    <Button className="!bg-white !text-black !hover:bg-blue-100 font-semibold px-4 py-2 rounded shadow border border-black" onClick={handleOpenDialog}>Add</Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
@@ -574,7 +581,7 @@ function Dashboard() {
                     </div>
                     <DialogFooter>
                       <DialogClose asChild>
-                        <Button type="submit" onClick={handleAddPayment}>Add</Button>
+                        <Button type="submit" onClick={handleAddPayment} className="!bg-white !text-black !hover:bg-gray-800 font-semibold px-4 py-2 rounded shadow" >Add</Button>
                       </DialogClose>
                     </DialogFooter>
                   </DialogContent>
@@ -676,7 +683,7 @@ function Dashboard() {
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="focus:outline-none focus:ring-0">
+                            <Button variant="ghost" size="icon" className="text-black hover:bg-gray-100 focus:outline-none">
                               <Ellipsis className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -685,7 +692,14 @@ function Dashboard() {
                             <DropdownMenuSeparator />
                             {isEditing ? (
                               <>
-                                <DropdownMenuItem onClick={() => handleSave(payment._id)}>Save</DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <button
+                                    className="!w-full !text-left !bg-white !text-black !border !border-black !px-4 !py-2 !font-semibold !rounded hover:!bg-gray-100"
+                                    onClick={() => handleSave(payment._id)}
+                                  >
+                                    Save
+                                  </button>
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => setEditingId(null)}>Cancel</DropdownMenuItem>
                               </>
                             ) : (
@@ -713,10 +727,11 @@ function Dashboard() {
                 })}
               </TableBody>
             </Table>
+            </div>
           </div>
         </main>
       </SidebarProvider>
-    </div >
+    </motion.div>
   );
 };
 

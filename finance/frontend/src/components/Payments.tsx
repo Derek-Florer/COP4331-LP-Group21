@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { jwtDecode } from "jwt-decode";
+import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -196,14 +197,19 @@ export default function Payments() {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   return (
-    <div className="w-screen h-screen bg-muted font-sans text-foreground flex overflow-hidden">
+    <motion.div
+      className="w-screen h-screen bg-gradient-to-br from-blue-600 to-purple-700 font-sans text-white flex overflow-hidden"
+      initial={{ x: 200, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ duration: 0.8, ease: "easeInOut" }}
+    >  
       <SidebarProvider>
         <aside className={`bg-card border-r border-trans shadow-lg transition-all duration-300 ${isSidebarOpen ? "w-64" : "w-0"} overflow-hidden`}>
           <AppSidebar />
         </aside>
 
-        <SidebarTrigger onClick={toggleSidebar} />
-        <main className={`flex-1 flex flex-col items-center justify-start p-8 overflow-y-auto transition-all duration-300 ${isSidebarOpen ? "" : "w-full"}`}>
+        <SidebarTrigger onClick={toggleSidebar} className="text-black hover:text-gray-200" />
+        <main className={`flex-1 flex flex-col items-center justify-start p-8 overflow-y-auto transition-all duration-300 ${isSidebarOpen ? "" : "w-full"} text-white`}>
           <div className="w-full max-w-5xl">
             <Card className="w-full shadow-md">
               <CardHeader>
@@ -413,6 +419,6 @@ export default function Payments() {
           </div>
         </main>
       </SidebarProvider>
-    </div>
+      </motion.div>
   );
 }

@@ -13,6 +13,7 @@ export default function Login() {
   const [message, setMessage] = useState('');
   const [startShrink, setStartShrink] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -41,7 +42,11 @@ export default function Login() {
       const res = await response.json();
       if (response.ok) {
         localStorage.setItem('token', res.token);
-        window.location.href = '/dashboard';
+        setIsLoggingIn(true);
+
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 800); // match the animation duration
       } else {
         setMessage('Invalid credentials');
       }
@@ -53,15 +58,18 @@ export default function Login() {
   const userDataString = localStorage.getItem('token');
   if (userDataString) {
     try {
-      window.location.href = '/dashboard';
+      navigate('/dashboard');
     } catch (error) {
       console.error('No local user data', error);
     }
   }
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden font-sans bg-gradient-to-br from-blue-600 to-purple-700">
-      {/* Left panel slides in first */}
+    <motion.div
+      className="relative w-screen h-screen overflow-hidden font-sans bg-gradient-to-br from-blue-600 to-purple-700"
+      animate={isLoggingIn ? { x: '-100%' } : { x: 0 }}
+      transition={{ duration: 0.8, ease: 'easeInOut' }}
+    >
       <motion.div
         initial={{ x: 200, opacity: 0 }}
         animate={{
@@ -87,7 +95,6 @@ export default function Login() {
         </div>
       </motion.div>
 
-      {/* Right panel fades in after left finishes shrinking */}
       <AnimatePresence>
         {showLogin && (
           <motion.div
@@ -141,9 +148,14 @@ export default function Login() {
                       </div>
                     </div>
 
-                    <Button type="submit" className="w-full mt-2">
+                    <Button
+                      type="submit"
+                      className={`w-full mt-2 !bg-blue-700 !text-white hover:!bg-blue-800 transition-colors duration-300 
+                      `}
+                    >
                       Sign In
                     </Button>
+
 
                     {message && (
                       <p className="text-sm text-red-500 text-center mt-2">{message}</p>
@@ -165,6 +177,6 @@ export default function Login() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
