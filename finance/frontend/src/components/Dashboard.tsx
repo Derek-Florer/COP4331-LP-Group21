@@ -357,6 +357,7 @@ function Dashboard() {
     "Healthcare", "Entertainment", "Subscriptions", "Education", "Savings", "Other"
   ];
   const [categoryTotals, setCategoryTotals] = useState<any[]>([]);
+  const pieTotal = categoryTotals.reduce((sum, entry) => sum + entry.value, 0);
   const fetchSpentPerCategory = async (category: string): Promise<number> => {
     const token = localStorage.getItem('token');
     let userId = '';
@@ -548,8 +549,9 @@ function Dashboard() {
 
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex-1 pb-0 flex flex-row justify-between items-center">
-                <div className="w-full max-w-[50%]">
+              <CardContent className="flex-1 pb-0 flex flex-row items-center ">
+                <span className="w-full max-w-[50%]">
+                  <h3 className="text-lg text-center font-semibold mb-2 text-muted-foreground">Total Spent</h3>
                   <ChartContainer
                     config={chartConfig}
                     className="mx-auto max-h-[220px] w-full flex items-center justify-center"
@@ -560,7 +562,6 @@ function Dashboard() {
                       endAngle={-270}
                       innerRadius={80}
                       outerRadius={105}
-                      cx={100} // Moves chart left
                     >
                       <PolarGrid
                         gridType="circle"
@@ -614,10 +615,16 @@ function Dashboard() {
                       </PolarRadiusAxis>
                     </RadialBarChart>
                   </ChartContainer>
-                </div>
+                  <div className="text-center mt-4">
+                    <p className="text-sm text-muted-foreground">
+                      {(((currentBudget ? currentBudget : 0) - totalSpent)).toFixed(2)}$ left to spend.
+                    </p>
+                  </div>
+                </span>
 
                 {/* Pie chart on the right side */}
-                <div className="w-[600px]">
+                <span className="w-full max-w-[50%]">
+                  <h3 className="text-lg text-center font-semibold mb-2 text-muted-foreground">Total Spent by Category</h3>
                   <ChartContainer
                     config={chartConfig}
                     className="mx-auto max-h-[400px] w-full flex items-center justify-center"
@@ -636,15 +643,6 @@ function Dashboard() {
                         innerRadius={0}
                         outerRadius={85}
                       >
-                        <LabelList
-                          dataKey="browser"
-                          className="fill-background"
-                          stroke="none"
-                          fontSize={12}
-                          formatter={(value: keyof typeof category) =>
-                            category[value]
-                          }
-                        />
                         {categoryTotals.map((entry, index) => (
                           <Cell
                             key={`cell-${index}`}
@@ -654,7 +652,28 @@ function Dashboard() {
                       </Pie>
                     </PieChart>
                   </ChartContainer>
-                </div>
+                  <div className="mt-4 px-4">
+                    <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 max-w-full">
+                      {categoryTotals.map((entry, index) => {
+                        const percent = ((entry.value / pieTotal) * 100).toFixed(2);
+                        return (
+                          <div key={`legend-${index}`} className="flex items-center">
+                            <span
+                              className="block w-4 h-4 rounded-sm"
+                              style={{
+                                backgroundColor:
+                                  categoryColors[entry.category as keyof typeof categoryColors] || "#8884d8",
+                              }}
+                            />
+                            <span className="ml-2 text-sm text-muted-foreground whitespace-nowrap">
+                              {entry.category} – {percent}%
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </span>
               </CardContent>
               <CardFooter />
             </Card>
